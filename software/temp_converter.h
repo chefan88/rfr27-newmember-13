@@ -22,17 +22,17 @@ static long count_calc(int count){
     return (val1 + val2 / 2) / val2;
 }
 
-static int mv_to_temp(long mv, int temp){
+static int mv_to_temp(long mv, int *temp){
     if (mv > Max_mv)
         return Open;
     else if (mv < Min_mv)
         return Shorted;
     else if (mv > temp_table[0]) {
-        temp = (int)(Temp_Min * 10);
+        *temp = (int)(Temp_Min * 10);
         return Normal;
     }
     else if (mv < temp_table[table_length - 1]) {
-        temp = (int)((Temp_Min + Step * (table_length - 1)) * 10);
+        *temp = (int)((Temp_Min + Step * (table_length - 1)) * 10);
         return Normal;
     }
     else {
@@ -45,8 +45,12 @@ static int mv_to_temp(long mv, int temp){
         
         long temp_step = ((vhigh -mv) * (Step * 10) + diff / 2) / 2;
         
-        temp = (int)((Temp_Min + Step * i) * 10 + temp_step);
+        *temp = (int)((Temp_Min + Step * i) * 10 + temp_step);
         return Normal;
     }
     
+}
+
+static int count_to_temp(int count, int *temp){
+    return mv_to_temp(count_calc(count), temp);
 }
