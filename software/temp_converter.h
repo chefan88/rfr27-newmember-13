@@ -27,15 +27,26 @@ static int mv_to_temp(long mv, int temp){
         return Open;
     else if (mv < Min_mv)
         return Shorted;
-    for (int i = 0; i < table_length - 1; i++) {
-        int v_hi = temp_table[i];
-        int v_lo = temp_table[i + 1];
-        if (mv >= v_lo) {                       /* found the gap */
-            int span = v_hi - v_lo;
-            int frac_x10 = ((v_hi - mv) * (Step * 10) + span / 2) / span;
-            if (frac_x10 < 0) frac_x10 = 0;     /* above the table: clamp to -40.0 C */
-            temp = (int)((Temp_Min + Step * i) * 10 + frac_x10);
-            return Normal;
-        }
+    else if (mv > temp_table[0]) {
+        temp = (int)(Temp_Min * 10);
+        return Normal;
+    }
+    else if (mv < temp_table[table_length - 1]) {
+        temp = (int)((Temp_Min + Step * (table_length - 1)) * 10);
+        return Normal;
+    }
+    else {
+        int i = 0;
+        while (i < table_length -2 && mv < temp_table[i]) i++;
+        
+        long vhigh = temp_table[i];
+        long vlow = temp_table[i + 1];
+        long diff = vhigh - vlow;
+        
+        long temp_step = ((vhigh -mv) * (Step * 10) + diff / 2) / 2;
+        
+        temp = (int)((Temp_Min + Step * i) * 10 + temp_step);
+        return Normal;
+    }
     
 }
