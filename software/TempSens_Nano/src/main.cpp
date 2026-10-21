@@ -3,7 +3,9 @@
 #include "temp_converter.h"
 #include <stdint.h>
 // put function declarations here:
-int myFunction(int, int);
+
+
+static bool sensor_error = true;
 
 const int diodes = 16;
 int fault = 600;
@@ -26,6 +28,16 @@ int mux_shift = 2;
 int mux_area = (0x0F << mux_shift);
 
 //I2C
+
+#define summary   0x00   
+#define all       0x01
+#define summary_len   8
+#define all_len       (NUM_CHANNELS * 2)
+
+#define maxtemp     0x01   // max temp above limit
+#define sensErrChan 0x02   //at least one channel open or short
+#define valid       0x04   //at least one scan done
+#define invalid     0x7FFF // value for a bad channel
 
 static int16_t adcCounts[diodes];
 static int8_t tempvaluesx10[diodes];
@@ -65,6 +77,13 @@ static void updateLED(bool fault){
     }
 }
 
+static bool faultCheck(void){
+    if (sensor_error) 
+      return maxtemp || sensErrChan;
+    else
+      return maxtemp;
+    
+}
 
 void setup() {
   // put your setup code here, to run once:
