@@ -37,9 +37,34 @@ static int32_t lastLEDtoggle = 0;
 static bool lastButton = false;
 static int32_t lastButtonChange = 0;
 
+
+
+//side funcs
+
+static void bigEndian(int8_t *final, int16_t value){
+  final[0] = (int8_t)((int16_t)value >> 8);
+  final[1] = (int8_t)((int16_t)value & 0xFF);
+}
+
 static void muxSelect(int8_t channel){
   PORTD = (int8_t)((PORTD & ~mux_area) | ((channel & 0x0F) << mux_shift));
 }
+
+//LED funcs
+static void updateLED(bool fault){
+    int32_t now = millis();
+    if (!fault) {
+      ledON = false;
+      digitalWrite(pin_LED, LOW);
+      return;
+    }
+    else if (now - lastLEDtoggle >= led_period){
+      lastLEDtoggle = now;
+      ledON = !ledON;
+      digitalWrite(pin_LED, ledON ? HIGH : LOW);
+    }
+}
+
 
 void setup() {
   // put your setup code here, to run once:
