@@ -11,8 +11,9 @@ const int diodes = 16;
 int fault = 600;
 int nofault = 500;
 
+int mux_ms = 1500;
 int ADC_read = 4;
-
+int ADC_shift = 2; // log2(ADC_read) = 2;
 
 int led_period = 250;
 int button_debounce = 30;
@@ -83,6 +84,20 @@ static bool faultCheck(void){
     else
       return maxtemp;
     
+}
+
+//ADC Reading Func
+
+static int16_t readChannel(int8_t channel1){
+  muxSelect(channel1);
+  delayMicroseconds(mux_ms);
+  (void)analogRead(pin_ADC);
+
+  int16_t sum = 0;
+  for (int i = 0; i < ADC_read; i++){
+    sum += analogRead(pin_ADC);
+  }
+  return (sum + (ADC_read >> 1)) >> ADC_shift;
 }
 
 void setup() {
