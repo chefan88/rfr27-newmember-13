@@ -31,18 +31,26 @@ int mux_area = (0x0F << mux_shift);
 //I2C
 
 #define summary   0x00   
-#define all       0x01
+#define channel_Data       0x01
 #define summary_len   8
-#define all_len       (NUM_CHANNELS * 2)
+#define all_len       (diodes * 2)
 
 #define maxtemp     0x01   // max temp above limit
 #define sensErrChan 0x02   //at least one channel open or short
-#define valid       0x04   //at least one scan done
+#define statvalid   0x04   //at least one scan done
 #define invalid     0x7FFF // value for a bad channel
 
+//----
+
 static int16_t adcCounts[diodes];
-static int8_t tempvaluesx10[diodes];
+static int16_t tempvaluesx10[diodes];
 static int8_t channelstatus[diodes]; 
+
+static bool overTemp = false;
+static bool sensorError = false;
+static bool haveValidScan = false;
+
+
 
 //LED
 static bool ledON = false;
@@ -80,9 +88,9 @@ static void updateLED(bool fault){
 
 static bool faultCheck(void){
     if (sensor_error) 
-      return maxtemp || sensErrChan;
+      return overTemp || sensorError;
     else
-      return maxtemp;
+      return overTemp;
     
 }
 
@@ -99,6 +107,67 @@ static int16_t readChannel(int8_t channel1){
   }
   return (sum + (ADC_read >> 1)) >> ADC_shift;
 }
+
+// Full 16 Channel Scan
+static void scanChannels(void){
+  int32_t sum10 = 0;
+  int16_t max10 = -32768, min10 = 32767;
+  int8_t valid1 = 0, hotchannel = 0;
+  bool anyError = false;
+
+  for (uint8_t channel2 = 0; channel2 < diodes; channel2++){
+    adcCounts[channel2] = readChannel(channel2);
+    channelstatus[channel2] = count_to_temp(adcCounts[channel2], &tempvaluesx10[channel2]);
+
+    if (channelstatus[channel2] == Normal){
+      int16_t t = tempvaluesx10[channel2];
+      if(t>max10) {max10 = t; hotchannel = channel2;}
+      if(t<min10) {min10 = t;}
+      sum10 += t;
+      valid1++;
+    }
+    else{
+      anyError = true;
+    }
+    updateLED(faultCheck());
+  }
+
+  sensor_error = anyError;
+
+  if (valid1 > 0){
+    if (max10 > fault)  overTemp = true;
+    else if (max10 < nofault) overTemp = false;
+  }
+
+  int8_t sum8[summary_len];
+  int8_t channel_data[all_len];
+
+  int8_t status = statvalid;
+  if (overTemp) status |= maxtemp;
+  if (sensor_error) status |= sensErrChan;
+
+  int16_t avg = (valid1 > 0) ? (int16_t)(sum10 / valid1) : (int16_t)invalid;
+  if (valid1 == 0) {max10 = invalid; min10 = invalid;}
+
+  sum8[0] = status;
+  bigEndian(&sum8[1], max10);
+  bigEndian(&sum8[3], min10);
+  bigEndian(&sum8[5], avg);
+  sum8[7] = hotchannel;
+
+  for (uint8_t channel3 = 0; channel3 < diodes; channel3++){
+    int16_t value2 = (channelstatus[channel3] == Normal) ? tempvaluesx10[channel3] : (int16_t)invalid;
+    bigEndian(&channel_data[channel3 * 2], value2);
+  }
+
+  noInterrupts();
+  memcpy(channel_Data,sum8,all_len);
+  
+
+
+
+}
+
 
 void setup() {
   // put your setup code here, to run once:
