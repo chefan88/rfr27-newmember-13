@@ -1,5 +1,5 @@
 long vref_mv = 5000;
-long ADC = 1024L;
+long adc_ = 1024;
 long AMP = 2L;
 long Max_mv = 2470;
 long Min_mv = 1200;
@@ -18,7 +18,7 @@ static const int temp_table[table_length] = {
 
 static long count_calc(int count){
     long val1 = (long)count * vref_mv;
-    long val2 = ADC * AMP;
+    long val2 = adc_ * AMP;
     return (val1 + val2 / 2) / val2;
 }
 
