@@ -170,7 +170,27 @@ static void scanChannels(void){
   interrupts();
   
   haveValidScan = true;
+
 }
+
+static void onI2CRecieve (int numBytes){
+  if (numBytes >= 1){
+    pointer = (uint8_t)Wire.read();
+    while (Wire.available() > 0) {
+      (void)Wire.read();
+    }
+  }
+}
+
+static void onI2CRequest (void){
+  if (pointer == channel_Data){
+    Wire.write(tempAllChannel, all_len);
+  }
+  else{
+    Wire.write(tempSummary, summary_len);
+  }
+}
+
 
 
 void setup() {
