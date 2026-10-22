@@ -7,6 +7,7 @@
 
 static bool sensor_error = true;
 
+#define I2C_Address 0x42
 const int diodes = 16;
 int fault = 600;
 int nofault = 500;
@@ -173,7 +174,7 @@ static void scanChannels(void){
 
 }
 
-static void onI2CRecieve (int numBytes){
+static void onI2CReceive (int numBytes){
   if (numBytes >= 1){
     pointer = (uint8_t)Wire.read();
     while (Wire.available() > 0) {
@@ -191,18 +192,52 @@ static void onI2CRequest (void){
   }
 }
 
+static void checkButton(void){
+  bool pressed = (digitalRead(pin_button) == HIGH);
+  uint32_t now1 = millis();
+  if (pressed != lastButton && (now1 - lastButtonChange) > button_debounce){
+    lastButtonChange = now1;
+    lastButton = pressed;
+    
+  }
 
+}
 
-void setup() {
-  // put your setup code here, to run once:
+void setup(void) {
+  DDRD |= mux_area;
+  muxSelect(0);
+  pinMode(Mux_en, OUTPUT);
+  digitalWrite(Mux_en, HIGH);\
   
+  //LED
+  pinMode(pin_LED, OUTPUT);
+  digitalWrite(pin_LED, LOW);
+
+  pinMode(Sens_en, OUTPUT);
+  digitalWrite(Sens_en, LOW);
+
+  analogReference(DEFAULT);
+
+  delay(20);
+  digitalWrite(Mux_en, LOW);
+
+  memset(tempSummary, 0, summary_len);
+  bigEndian((int8_t *)&tempSummary[1], invalid);
+  bigEndian((int8_t *)&tempSummary[3], invalid);
+  bigEndian((int8_t *)&tempSummary[5], invalid);
+  for (uint8_t channel4 = 0; channel4 < diodes; channel4++){
+    bigEndian((int8_t *)&tempAllChannel[channel4 * 2], invalid);
+  }
+
+  Wire.begin(I2C_Address);
+  Wire.onReceive(onI2CReceive);
+  Wire.onRequest(onI2CRequest);
+  
+
+
+
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  
 }
