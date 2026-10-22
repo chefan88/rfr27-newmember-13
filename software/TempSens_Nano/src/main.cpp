@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include "temp_converter.h"
 #include <stdint.h>
-// put function declarations here:
+
 
 
 static bool sensor_error = true;
