@@ -239,5 +239,6 @@ void setup(void) {
 }
 
 void loop() {
-  
+  scanChannels();
+  updateLED(faultCheck());
 }
