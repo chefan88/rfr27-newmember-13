@@ -17,13 +17,11 @@ int ADC_read = 4;
 int ADC_shift = 2; // log2(ADC_read) = 2;
 
 int led_period = 250;
-int button_debounce = 30;
 
 //Pin Assignments
 static const int8_t Mux_en = 9;
 static const int8_t Sens_en = 10;
 static const int8_t pin_LED = 8;
-static const int8_t pin_button = 7;
 static const int8_t pin_ADC = A0;
 
 int mux_shift = 2;
@@ -60,8 +58,6 @@ static bool haveValidScan = false;
 //LED
 static bool ledON = false;
 static int32_t lastLEDtoggle = 0;
-static bool lastButton = false;
-static int32_t lastButtonChange = 0;
 
 
 
@@ -192,16 +188,6 @@ static void onI2CRequest (void){
   }
 }
 
-static void checkButton(void){
-  bool pressed = (digitalRead(pin_button) == HIGH);
-  uint32_t now1 = millis();
-  if (pressed != lastButton && (now1 - lastButtonChange) > button_debounce){
-    lastButtonChange = now1;
-    lastButton = pressed;
-    
-  }
-
-}
 
 void setup(void) {
   DDRD |= mux_area;
@@ -232,9 +218,6 @@ void setup(void) {
   Wire.begin(I2C_Address);
   Wire.onReceive(onI2CReceive);
   Wire.onRequest(onI2CRequest);
-  
-
-
 
 }
 
