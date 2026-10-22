@@ -42,6 +42,10 @@ int mux_area = (0x0F << mux_shift);
 
 //----
 
+static uint8_t tempSummary[summary_len];
+static uint8_t tempAllChannel[all_len];
+static volatile uint8_t pointer = summary;
+
 static int16_t adcCounts[diodes];
 static int16_t tempvaluesx10[diodes];
 static int8_t channelstatus[diodes]; 
@@ -161,11 +165,11 @@ static void scanChannels(void){
   }
 
   noInterrupts();
-  memcpy(channel_Data,sum8,all_len);
+  memcpy(tempSummary,sum8,summary_len);
+  memcpy(tempAllChannel,channel_data,all_len);
+  interrupts();
   
-
-
-
+  haveValidScan = true;
 }
 
 
