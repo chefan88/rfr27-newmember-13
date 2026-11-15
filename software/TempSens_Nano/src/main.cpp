@@ -88,11 +88,8 @@ static void updateLED(bool fault){
 }
 
 static bool faultCheck(void){
-    if (sensor_error) 
-      return overTemp || sensorError;
-    else
-      return overTemp;
-    
+  
+    return overTemp || sensorError;
 }
 
 //ADC Reading Func
@@ -133,7 +130,7 @@ static void scanChannels(void){
     updateLED(faultCheck());
   }
 
-  sensor_error = anyError;
+  sensorError = anyError;
 
   if (valid1 > 0){
     if (max10 > fault)  overTemp = true;
@@ -145,8 +142,8 @@ static void scanChannels(void){
 
   int8_t status = statvalid;
   if (overTemp) status |= maxtemp;
-  if (sensor_error) status |= sensErrChan;
-
+  if (sensorError) status |= sensErrChan;
+  
   int16_t avg = (valid1 > 0) ? (int16_t)(sum10 / valid1) : (int16_t)invalid;
   if (valid1 == 0) {max10 = invalid; min10 = invalid;}
 
