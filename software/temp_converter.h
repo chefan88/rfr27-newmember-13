@@ -39,13 +39,13 @@ static int8_t mv_to_temp(int32_t mv, int16_t *temp){
     }
     else {
         int8_t i = 0;
-        while (i < table_length -2 && mv < temp_table[i]) i++;
+        while (i < table_length -2 && mv < temp_table[i+1]) i++;
         
         int32_t vhigh = temp_table[i];
         int32_t vlow = temp_table[i + 1];
         int32_t diff = vhigh - vlow;
         
-        int32_t temp_step = ((vhigh -mv) * (Step * 10) + diff / 2) / 2;
+        int32_t temp_step = ((vhigh -mv) * (Step * 10) + diff / 2) / diff;
         
         *temp = (int16_t)((Temp_Min + Step * i) * 10 + temp_step);
         return Normal;
