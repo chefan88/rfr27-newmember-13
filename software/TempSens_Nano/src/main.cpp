@@ -7,8 +7,8 @@
 
 static bool sensor_error = true;
 
-#define I2C_Address 0x42
-const int diodes = 16;
+#define I2C_Address 0x08
+const int diodes = 8;
 int fault = 600;
 int nofault = 500;
 
