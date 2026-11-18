@@ -9,8 +9,8 @@ static bool sensor_error = true;
 
 #define I2C_Address 0x08
 const int diodes = 8;
-int fault = 600;
-int nofault = 500;
+int faultTemp = 600;
+int nofaultTemp = 500;
 
 int mux_ms = 1500;
 int ADC_read = 4;
@@ -19,13 +19,14 @@ int ADC_shift = 2; // log2(ADC_read) = 2;
 int led_period = 250;
 
 //Pin Assignments
-static const int8_t Mux_en = 9;
-static const int8_t Sens_en = 10;
-static const int8_t pin_LED = 8;
-static const int8_t pin_ADC = A0;
+ const uint8_t Mux_en = 9;
+ const uint8_t Sens_en = 10;
+ const uint8_t pin_LED = 8;
+ const uint8_t pin_ADC = A0;
 
-int mux_shift = 2;
-int mux_area = (0x0F << mux_shift);
+//3-bit mask (for S0-S2)
+int MUX_SHIFT = 2;
+int MUX_AREA = (0x07 << MUX_SHIFT);
 
 //I2C
 
@@ -68,14 +69,15 @@ static void bigEndian(int8_t *final, int16_t value){
   final[1] = (int8_t)((int16_t)value & 0xFF);
 }
 
-static void muxSelect(int8_t channel){
-  PORTD = (int8_t)((PORTD & ~mux_area) | ((channel & 0x0F) << mux_shift));
+void muxSelect(uint8_t channel){
+  PORTD &= ~MUX_AREA; 
+  PORTD |= ((channel & 0x07) << MUX_SHIFT);
 }
 
 //LED funcs
-static void updateLED(bool fault){
+static void updateLED(bool faultTemp){
     int32_t now = millis();
-    if (!fault) {
+    if (!faultTemp) {
       ledON = false;
       digitalWrite(pin_LED, LOW);
       return;
@@ -106,7 +108,7 @@ static int16_t readChannel(int8_t channel1){
   return (sum + (ADC_read >> 1)) >> ADC_shift;
 }
 
-// Full 16 Channel Scan
+// Full 8 Channel Scan
 static void scanChannels(void){
   int32_t sum10 = 0;
   int16_t max10 = -32768, min10 = 32767;
@@ -133,8 +135,8 @@ static void scanChannels(void){
   sensorError = anyError;
 
   if (valid1 > 0){
-    if (max10 > fault)  overTemp = true;
-    else if (max10 < nofault) overTemp = false;
+    if (max10 > faultTemp)  overTemp = true;
+    else if (max10 < nofaultTemp) overTemp = false;
   }
 
   int8_t sum8[summary_len];
@@ -187,7 +189,7 @@ static void onI2CRequest (void){
 
 
 void setup(void) {
-  DDRD |= mux_area;
+  DDRD |= MUX_AREA;
   muxSelect(0);
   pinMode(Mux_en, OUTPUT);
   digitalWrite(Mux_en, HIGH);\
