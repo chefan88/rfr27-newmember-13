@@ -43,7 +43,7 @@ int MUX_AREA = (0x07 << MUX_SHIFT);
 //----
 
 static uint8_t tempSummary[summary_len];
-static uint8_t tempAllChannel[all_len];
+static uint8_t tempAll[all_len];
 static volatile uint8_t pointer = summary;
 
 static int16_t adcCounts[diodes];
@@ -99,19 +99,21 @@ static bool faultCheck(void){
 static int16_t readChannel(int8_t channel1){
   muxSelect(channel1);
   delayMicroseconds(mux_ms);
-  (void)analogRead(pin_ADC);
+  (void)analogRead(pin_ADC); //dummy read 
 
   int16_t sum = 0;
   for (int i = 0; i < ADC_read; i++){
     sum += analogRead(pin_ADC);
   }
-  return (sum + (ADC_read >> 1)) >> ADC_shift;
+
+  uint16_t result = sum + (ADC_read >> 1);
+  return result >> ADC_shift;
 }
 
 // Full 8 Channel Scan
 static void scanChannels(void){
   int32_t sum10 = 0;
-  int16_t max10 = -32768, min10 = 32767;
+  int16_t maxLimit = -32768, minLimit = 32767;
   int8_t valid1 = 0, hotchannel = 0;
   bool anyError = false;
 
@@ -121,8 +123,8 @@ static void scanChannels(void){
 
     if (channelstatus[channel2] == Normal){
       int16_t t = tempvaluesx10[channel2];
-      if(t>max10) {max10 = t; hotchannel = channel2;}
-      if(t<min10) {min10 = t;}
+      if(t>maxLimit) {maxLimit = t; hotchannel = channel2;}
+      if(t<minLimit) {minLimit = t;}
       sum10 += t;
       valid1++;
     }
@@ -134,35 +136,41 @@ static void scanChannels(void){
 
   sensorError = anyError;
 
+  int8_t status = statvalid;
+  if(sensorError) 
+  {
+    status |= sensErrChan;
+  }
+
   if (valid1 > 0){
-    if (max10 > faultTemp)  overTemp = true;
-    else if (max10 < nofaultTemp) overTemp = false;
+    if (maxLimit > faultTemp) {
+       overTemp = true;
+       status |= maxtemp;
+    }
+    else if (maxLimit < nofaultTemp){
+       overTemp = false;    }
   }
 
   int8_t sum8[summary_len];
   int8_t channel_data[all_len];
-
-  int8_t status = statvalid;
-  if (overTemp) status |= maxtemp;
-  if (sensorError) status |= sensErrChan;
   
   int16_t avg = (valid1 > 0) ? (int16_t)(sum10 / valid1) : (int16_t)invalid;
-  if (valid1 == 0) {max10 = invalid; min10 = invalid;}
+  if (valid1 == 0) {maxLimit = invalid; minLimit = invalid;}
+  
+  noInterrupts();
 
-  sum8[0] = status;
-  bigEndian(&sum8[1], max10);
-  bigEndian(&sum8[3], min10);
-  bigEndian(&sum8[5], avg);
-  sum8[7] = hotchannel;
+  tempSummary[0] = status;
+  bigEndian((int8_t *)&tempSummary[1], maxLimit);
+  bigEndian((int8_t *)&tempSummary[3], minLimit);
+  bigEndian((int8_t *)&tempSummary[5], avg);
+  tempSummary[7] = hotchannel;
 
   for (uint8_t channel3 = 0; channel3 < diodes; channel3++){
     int16_t value2 = (channelstatus[channel3] == Normal) ? tempvaluesx10[channel3] : (int16_t)invalid;
-    bigEndian(&channel_data[channel3 * 2], value2);
+    bigEndian((int8_t *)&tempAll[channel3 * 2], value2);
   }
 
-  noInterrupts();
-  memcpy(tempSummary,sum8,summary_len);
-  memcpy(tempAllChannel,channel_data,all_len);
+
   interrupts();
   
   haveValidScan = true;
@@ -180,7 +188,7 @@ static void onI2CReceive (int numBytes){
 
 static void onI2CRequest (void){
   if (pointer == channel_Data){
-    Wire.write(tempAllChannel, all_len);
+    Wire.write(tempAll, all_len);
   }
   else{
     Wire.write(tempSummary, summary_len);
@@ -206,12 +214,15 @@ void setup(void) {
   delay(20);
   digitalWrite(Mux_en, LOW);
 
-  memset(tempSummary, 0, summary_len);
+ 
+  for(int i = 0; i < summary_len; i++){
+    tempSummary[i] = 0;
+  }
   bigEndian((int8_t *)&tempSummary[1], invalid);
   bigEndian((int8_t *)&tempSummary[3], invalid);
   bigEndian((int8_t *)&tempSummary[5], invalid);
   for (uint8_t channel4 = 0; channel4 < diodes; channel4++){
-    bigEndian((int8_t *)&tempAllChannel[channel4 * 2], invalid);
+    bigEndian((int8_t *)&tempAll[channel4 * 2], invalid);
   }
 
   Wire.begin(I2C_Address);
